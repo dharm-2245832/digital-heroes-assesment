@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  subscription  Subscription?
+  scores        GolfScore[]
+  charityId     String?
+  charity       Charity?  @relation(fields: [charityId], references: [id])
+  contributionPercentage Int @default(10)
+
+  drawEntries   DrawEntry[]
+  winnings      Winner[]
+  donations     Donation[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Subscription {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan          PlanType
+  status        SubStatus @default(INACTIVE)
+  razorpayOrderId String?
+  razorpaySubscriptionId String?
+  currentPeriodEnd DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum PlanType {
+  MONTHLY
+  YEARLY
+}
+
+enum SubStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+}
+
+model GolfScore {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score     Int
+  date      DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+}
+
+model Charity {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  imageUrl    String?
+  users       User[]
+  donations   Donation[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Draw {
+  id          String      @id @default(cuid())
+  month       DateTime
+  numbers     Int[]
+  mode        DrawMode
+  status      DrawStatus  @default(SIMULATED)
+  entries     DrawEntry[]
+  winners     Winner[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum DrawMode {
+  RANDOM
+  ALGORITHM
+}
+
+enum DrawStatus {
+  SIMULATED
+  PUBLISHED
+}
+
+model DrawEntry {
+  id        String   @id @default(cuid())
+  drawId    String
+  draw      Draw     @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scores    Int[]
+  matches   Int
+  createdAt DateTime @default(now())
+}
+
+model Winner {
+  id          String   @id @default(cuid())
+  drawId      String
+  draw        Draw     @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchType   Int
+  prizeAmount Float
+  status      PayoutStatus @default(PENDING)
+  proofUrl    String?
+  payout      Payout?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+model Payout {
+  id        String   @id @default(cuid())
+  winnerId  String   @unique
+  winner    Winner   @relation(fields: [winnerId], references: [id], onDelete: Cascade)
+  amount    Float
+  paidAt    DateTime @default(now())
+}
+
+model Donation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  charityId String
+  charity   Charity  @relation(fields: [charityId], references: [id])
+  amount    Float
+  createdAt DateTime @default(now())
+}
