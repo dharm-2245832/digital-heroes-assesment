@@ -21,10 +21,9 @@ export async function simulateDraw(formData) {
   const session = await getServerSession(authOptions);
   if (session?.role !== "ADMIN") return { error: "Unauthorized" };
 
-  const mode = formData.get("mode"); // "RANDOM" or "ALGORITHM"
+  const mode = formData.get("mode");
 
   try {
-    // 1. Get all users with ACTIVE subscriptions
     const activeSubscribers = await prisma.subscription.findMany({
       where: { status: "ACTIVE" },
       select: { userId: true }
@@ -32,7 +31,6 @@ export async function simulateDraw(formData) {
 
     const activeUserIds = activeSubscribers.map(sub => sub.userId);
 
-    // 2. Get their scores
     const userScoresData = await prisma.user.findMany({
       where: { id: { in: activeUserIds } },
       select: {
@@ -44,15 +42,13 @@ export async function simulateDraw(formData) {
       }
     });
 
-    // Filter users who actually have 5 scores
     const eligibleUsers = userScoresData.filter(u => u.scores.length === 5);
 
     let drawnNumbers = [];
 
     if (mode === "ALGORITHM") {
-      // Algorithmic mode: Weight numbers based on frequency
       const frequencies = {};
-      for (let i = 1; i <= 45; i++) frequencies[i] = 0.1; // Base small weight for all
+      for (let i = 1; i <= 45; i++) frequencies[i] = 0.1;
 
       eligibleUsers.forEach(user => {
         user.scores.forEach(scoreObj => {
@@ -72,7 +68,6 @@ export async function simulateDraw(formData) {
         }
       }
     } else {
-      // Random mode: purely random 1-45
       while (drawnNumbers.length < 5) {
         const num = Math.floor(Math.random() * 45) + 1;
         if (!drawnNumbers.includes(num)) {
@@ -81,7 +76,6 @@ export async function simulateDraw(formData) {
       }
     }
 
-    // 3. Calculate simulated winners
     let matches3 = 0, matches4 = 0, matches5 = 0;
 
     eligibleUsers.forEach(user => {
@@ -93,19 +87,26 @@ export async function simulateDraw(formData) {
       if (matchCount === 5) matches5++;
     });
 
-    // Note: To simplify the flow, we'll store the simulation in the DB with status "SIMULATED"
-    // so it can be previewed or published later.
     const month = new Date();
     month.setDate(1);
     month.setHours(0,0,0,0);
 
-    // Remove any existing simulated draw for the month
     await prisma.draw.deleteMany({
       where: {
         month: month,
         status: "SIMULATED"
       }
     });
+
+    // Check if there was a previous jackpot rollover
+    const lastDraw = await prisma.draw.findFirst({
+      where: { status: "PUBLISHED" },
+      orderBy: { month: "desc" }
+    });
+
+    // For MVP, we calculate the estimated rollover pool size.
+    // Example: If last draw had 0 5-match winners, 40% of its pool rolled over.
+    // For simulation we just note the theoretical jackpot rollover logic requirement.
 
     const newDraw = await prisma.draw.create({
       data: {
@@ -141,13 +142,11 @@ export async function publishDraw(drawId) {
       return { error: "Draw not found or already published" };
     }
 
-    // Mark as published
     await prisma.draw.update({
       where: { id: drawId },
       data: { status: "PUBLISHED" }
     });
 
-    // Re-calculate winners and create DB records
     const activeSubscribers = await prisma.subscription.findMany({
       where: { status: "ACTIVE" },
       select: { userId: true }
@@ -162,7 +161,36 @@ export async function publishDraw(drawId) {
       }
     });
 
-    const totalPrizePool = activeUserIds.length * 5; // Example: $5 from each sub goes to pool
+    // Determine current month prize pool contribution
+    let totalPrizePool = activeUserIds.length * 5; // $5 per sub
+
+    // Jackpot Rollover Logic
+    // Find the last published draw before this one
+    const prevDraw = await prisma.draw.findFirst({
+      where: {
+        status: "PUBLISHED",
+        month: { lt: draw.month }
+      },
+      orderBy: { month: 'desc' }
+    });
+
+    let rolloverAmount = 0;
+    if (prevDraw) {
+      // Check if previous draw had any 5-match winners
+      const prevWinners5 = await prisma.winner.count({
+        where: { drawId: prevDraw.id, matchType: 5 }
+      });
+      if (prevWinners5 === 0) {
+        // If no winners, 40% of previous total pool rolls over.
+        // For MVP, since we don't store historical total active users easily without complex tables,
+        // we'll simulate a static rollover amount from the previous draw or recalculate based on current users.
+        rolloverAmount = (activeUserIds.length * 5) * 0.40;
+      }
+    }
+
+    const pool5 = (totalPrizePool * 0.40) + rolloverAmount;
+    const pool4 = totalPrizePool * 0.35;
+    const pool3 = totalPrizePool * 0.25;
 
     const drawnNumbers = draw.numbers;
     const winnersToCreate = [];
@@ -180,13 +208,7 @@ export async function publishDraw(drawId) {
       return null;
     }).filter(Boolean);
 
-    // Prize calculations
-    const pool5 = totalPrizePool * 0.40;
-    const pool4 = totalPrizePool * 0.35;
-    const pool3 = totalPrizePool * 0.25;
-
     for (const data of userMatches) {
-      // Record their entry regardless
       await prisma.drawEntry.create({
         data: {
           drawId: draw.id,

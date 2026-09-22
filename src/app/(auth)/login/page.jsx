@@ -5,6 +5,8 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 
 function LoginForm() {
   const router = useRouter();
@@ -94,12 +96,16 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-950 p-4">
-      <div className="w-full max-w-md space-y-8 rounded-xl bg-gray-900 p-8 shadow-2xl">
-        <Suspense fallback={<div className="text-white text-center">Loading...</div>}>
-          <LoginForm />
-        </Suspense>
-      </div>
+    <div className="flex flex-col min-h-screen bg-gray-950">
+      <Header />
+      <main className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-8 rounded-xl bg-gray-900 p-8 shadow-2xl border border-gray-800">
+          <Suspense fallback={<div className="text-white text-center">Loading...</div>}>
+            <LoginForm />
+          </Suspense>
+        </div>
+      </main>
+      <Footer />
     </div>
   );
 }

@@ -1,37 +1,22 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-gray-950 text-white">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-        <div className="text-xl font-bold tracking-tight">Digital Heroes</div>
-        <nav className="hidden md:flex space-x-6 text-sm">
-          <Link href="/about" className="hover:text-gray-300">About</Link>
-          <Link href="/how-it-works" className="hover:text-gray-300">How It Works</Link>
-          <Link href="/charities" className="hover:text-gray-300">Charities</Link>
-          <Link href="/pricing" className="hover:text-gray-300">Pricing</Link>
-        </nav>
-        <div className="flex space-x-4">
-          <Link href="/login">
-            <Button variant="ghost">Sign In</Button>
-          </Link>
-          <Link href="/signup">
-            <Button>Get Started</Button>
-          </Link>
-        </div>
-      </header>
-
+      <Header />
       <main className="flex-1">
         <section className="relative px-6 py-24 md:py-32 lg:py-40 flex flex-col items-center text-center overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-gray-950 -z-10" />
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight max-w-4xl">
             Play. Win. <span className="text-blue-500">Make an Impact.</span>
           </h1>
-          <p className="mt-6 text-lg md:text-xl text-gray-400 max-w-2xl">
+          <p className="mt-6 text-lg md:text-xl text-gray-400 max-w-2xl mx-auto">
             Join a community where your golf performance translates into real-world charitable contributions and exciting monthly prize draws.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+          <div className="mt-10 flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
             <Link href="/signup">
               <Button size="lg" className="w-full sm:w-auto px-8 py-6 text-lg">Subscribe Now</Button>
             </Link>
@@ -61,10 +46,7 @@ export default function Home() {
           </div>
         </section>
       </main>
-
-      <footer className="border-t border-gray-800 py-8 text-center text-gray-500 text-sm">
-        <p>&copy; {new Date().getFullYear()} Digital Heroes. All rights reserved.</p>
-      </footer>
+      <Footer />
     </div>
   );
 }
